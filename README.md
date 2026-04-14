@@ -27,4 +27,29 @@ Pastikan kamu sudah menginstal Node.js di komputermu.
    ```bash
    git clone [https://github.com/USERNAME_LU/kalkulator-pajak-pmk34.git](https://github.com/USERNAME_LU/kalkulator-pajak-pmk34.git)
    cd kalkulator-pajak-pmk34
+2. **Install Dependencies**
+   ```bash
+   npm install
+3. **Jalankan Server Dev**
+   ```bash
+   npm run dev
+   
+Cara Deploy (Production)
+Proyek ini sudah dilengkapi dengan Dockerfile dan konfigurasi Nginx untuk deployment langsung menggunakan Podman atau Docker.
+Build image dan jalankan container:
 
+**Jika menggunakan Podman**
+```bash 
+podman build -t tax-pwa:latest .
+podman run -d --name tax-calculator-app -p 8084:8084 --restart always tax-pwa:latest 
+```
+
+**Jika menggunakan Docker**
+
+```bash
+docker-compose up -d --build
+```
+
+Bersihkan sistem (Opsional):
+```bash
+podman builder prune -f && podman system prune -f
