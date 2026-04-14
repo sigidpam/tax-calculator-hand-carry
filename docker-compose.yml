@@ -1,0 +1,7 @@
+services:
+  tax-calculator:
+    build: .
+    container_name: indo-tax-app
+    ports:
+      - "8084:8084"
+    restart: always

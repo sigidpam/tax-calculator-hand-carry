@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TRX7T6YCV6"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-TRX7T6YCV6');
+    </script>
+
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/kalk192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <meta name="theme-color" content="#020617" />
+    
+    <title>Kalkulator Pajak HP & Hand-Carry - Hitung Bea Masuk PMK 34</title>
+    <meta name="description" content="Hitung estimasi pajak impor HP, iPhone, laptop, dan barang bawaan penumpang dari luar negeri secara akurat, realtime, dan mudah. Sesuai aturan PMK 34 Bea Cukai.">
+    
+    <script>
+      (function() {
+        // Cek local storage SEBELUM halaman dirender
+        const theme = localStorage.getItem('theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        // Jika user pernah pilih dark, atau belum pilih tapi sistemnya dark
+        if (theme === 'dark' || (!theme && systemDark)) {
+          document.documentElement.classList.add('dark');
+          // Set status bar HP jadi hitam langsung
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#020617');
+        } else {
+          document.documentElement.classList.remove('dark');
+          // Set status bar HP jadi putih
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f8fafc');
+        }
+      })();
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

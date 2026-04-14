@@ -1,0 +1,101 @@
+import { useState, useEffect, useCallback } from 'react';
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'AUD', 'SGD', 'HKD', 'JPY', 'KRW', 'MYR', 'THB', 'PHP', 'CNY'];
+
+export function useExchangeRates() {
+  const [rates, setRates] = useState(() => {
+    const saved = localStorage.getItem('rates');
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  const [kmkRates, setKmkRates] = useState({});
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isLoadingKmk, setIsLoadingKmk] = useState(false);
+
+  const fetchRates = useCallback(async () => {
+    if (!navigator.onLine) {
+      setIsOffline(true);
+      return;
+    }
+
+    // 1. Ambil Kurs Live
+    try {
+      const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=IDR,${CURRENCIES.join(',')}`);
+      if(res.ok) {
+         const data = await res.json();
+         const processed = { USD: data.rates.IDR };
+         CURRENCIES.forEach(c => { 
+           if(c !== 'USD') processed[c] = (1 / data.rates[c]) * data.rates.IDR; 
+         });
+         setRates(processed);
+         setIsOffline(false);
+         localStorage.setItem('rates', JSON.stringify(processed));
+      }
+    } catch (e) { 
+      console.error("Gagal update kurs live:", e);
+    }
+
+    // 2. Ambil Kurs KMK menggunakan Google Apps Script (Anti-Blokir)
+    setIsLoadingKmk(true);
+    try {
+      // PASTE URL GAS KAMU DI SINI! (Biarkan ?t=... di belakangnya untuk anti-cache)
+      const gasUrl = "https://script.google.com/macros/s/AKfycbxGDBxbY35o1fajFi6oBj9LpR14dBQ8GuuSVeNGh14n4FLhrHcJ516CoklmohA98R1Q/exec";
+      const timestamp = new Date().getTime();
+      
+      const res = await fetch(`${gasUrl}?t=${timestamp}`);
+      const htmlText = await res.text();
+
+      if (!htmlText || !htmlText.includes("Dolar Amerika Serikat")) {
+         throw new Error("Gagal mengambil data dari GAS");
+      }
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, 'text/html');
+      const tableRows = doc.querySelectorAll('table tbody tr');
+      const newKmkRates = {};
+      
+      tableRows.forEach(row => {
+        const cols = row.querySelectorAll('td');
+        if (cols.length >= 3) {
+          const currencyText = cols[1].textContent || '';
+          let valueText = cols[2].textContent || '';
+          const match = currencyText.match(/\(([A-Z]{3})\)/);
+          
+          if (match) {
+            const iso = match[1];
+            valueText = valueText.replace(/\./g, '').replace(/,/g, '.');
+            let finalValue = parseFloat(valueText);
+            
+            // Fix Yen Jepang
+            if (iso === 'JPY') finalValue = finalValue / 100;
+            
+            newKmkRates[iso] = finalValue;
+          }
+        }
+      });
+
+      console.log("Sukses Tarik Kemenkeu:", newKmkRates); // Untuk cek di Inspect Element
+      if (Object.keys(newKmkRates).length > 0) {
+        setKmkRates(newKmkRates);
+      }
+    } catch (e) {
+      console.error("Scraping KMK Gagal:", e);
+    } finally {
+      setIsLoadingKmk(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRates();
+    const handleOnline = () => { setIsOffline(false); fetchRates(); };
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [fetchRates]);
+
+  return { rates, kmkRates, isOffline, isLoadingKmk, fetchRates, CURRENCIES };
+}

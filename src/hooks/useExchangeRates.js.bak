@@ -1,0 +1,100 @@
+import { useState, useEffect, useCallback } from 'react';
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'AUD', 'SGD', 'HKD', 'JPY', 'KRW', 'MYR', 'THB', 'PHP', 'CNY'];
+
+export function useExchangeRates() {
+  const [rates, setRates] = useState(() => {
+    const saved = localStorage.getItem('rates');
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  const [kmkRates, setKmkRates] = useState({});
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isLoadingKmk, setIsLoadingKmk] = useState(false);
+
+  const fetchRates = useCallback(async () => {
+    if (!navigator.onLine) {
+      setIsOffline(true);
+      return;
+    }
+
+    // 1. Ambil Kurs Live (Buat Fallback & Estimasi)
+    try {
+      const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=IDR,${CURRENCIES.join(',')}`);
+      if(res.ok) {
+         const data = await res.json();
+         const processed = { USD: data.rates.IDR };
+         CURRENCIES.forEach(c => { 
+           if(c !== 'USD') processed[c] = (1 / data.rates[c]) * data.rates.IDR; 
+         });
+         setRates(processed);
+         setIsOffline(false);
+         localStorage.setItem('rates', JSON.stringify(processed));
+      }
+    } catch (e) { 
+      console.error("Gagal update kurs live:", e);
+    }
+
+    // 2. Ambil Kurs KMK via "Google Sheets Backdoor"
+    setIsLoadingKmk(true);
+    try {
+      // ⚠️ PENTING: HAPUS TULISAN INI & PASTE LINK CSV DARI GOOGLE SHEETS LU DI SINI ⚠️
+      const googleSheetCsvUrl = "https://docs.google.com/spreadsheets/d/ID_SHEET_LU/pub?gid=0&single=true&output=csv";
+      
+      // Tambahkan timestamp biar browser nggak ngasih data basi (cache)
+      const timestamp = new Date().getTime();
+      const res = await fetch(`${googleSheetCsvUrl}&t=${timestamp}`);
+      
+      if (!res.ok) throw new Error("Gagal akses Google Sheets");
+      
+      const csvText = await res.text();
+      const newKmkRates = {};
+      
+      // REGEX SAKTI: Nangkep format "(USD)USD" dan angka "17.003,00" di kolom sebelahnya
+      const regex = /\(([A-Z]{3})\)[^,]*,["']?([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]+)?)/g;
+      let match;
+      
+      while ((match = regex.exec(csvText)) !== null) {
+        const iso = match[1];
+        let valueStr = match[2];
+        
+        // Bersihkan titik ribuan dan ubah koma desimal jadi titik ala komputer
+        valueStr = valueStr.replace(/\./g, '').replace(/,/g, '.');
+        let finalValue = parseFloat(valueStr);
+        
+        // Fix jebakan Yen Jepang (karena harganya per 100 Yen)
+        if (iso === 'JPY') {
+           finalValue = finalValue / 100;
+        }
+        
+        newKmkRates[iso] = finalValue;
+      }
+
+      console.log("📊 Boom! Sukses Tarik KMK dari Google Sheets:", newKmkRates);
+      
+      if (Object.keys(newKmkRates).length > 0) {
+        setKmkRates(newKmkRates);
+      } else {
+        console.warn("Waduh, data kosong. Pastikan link Google Sheets udah bener format CSV-nya.");
+      }
+    } catch (e) {
+      console.error("❌ Scraping KMK Gagal:", e.message);
+    } finally {
+      setIsLoadingKmk(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRates();
+    const handleOnline = () => { setIsOffline(false); fetchRates(); };
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [fetchRates]);
+
+  return { rates, kmkRates, isOffline, isLoadingKmk, fetchRates, CURRENCIES };
+}

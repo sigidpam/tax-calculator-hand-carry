@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TRX7T6YCV6"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-TRX7T6YCV6');
+    </script>
+
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/kalk192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Kalkulator Pajak HP & Hand-Carry - Hitung Bea Masuk PMK 34</title>
+    <meta name="description" content="Hitung estimasi pajak impor HP, iPhone, laptop, dan barang bawaan penumpang dari l
+uar negeri secara akurat, realtime, dan mudah. Sesuai aturan PMK 34 Bea Cukai.">
+    <meta name="keywords" content="kalkulator pajak hp, pajak iphone, bea cukai soekarno hatta, hitung pajak impor, atur
+an imei, pajak barang bawaan, bea masuk pmk 34">
+    <meta name="author" content="BarangBawaan.my.id">
+
+    <meta property="og:title" content="Kalkulator Pajak HP & Barang Bawaan 2025" />
+    <meta property="og:description" content="Cek estimasi pajak bea cukai barang bawaanmu sebelum mendarat. Kurs Realtim
+e!" />
+    <meta property="og:image" content="https://barangbawaan.my.id/kalk192.png" />
+    <meta property="og:url" content="https://barangbawaan.my.id" />
+    <meta property="og:type" content="website" />
+
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

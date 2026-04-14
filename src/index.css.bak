@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  /* UPDATE DISINI: Tambahkan dark:bg-slate-950 agar body ikut gelap */
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white transition-colors duration-300;
+  
+  /* Pastikan body minimal setinggi layar agar tidak ada gap putih di bawah */
+  min-height: 100vh;
+}
+
+/* Hilangkan panah spinner di input number */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background-color: white !important;
+  }
+  .shadow-xl, .shadow-lg, .shadow-sm {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0;
+  }
+}
