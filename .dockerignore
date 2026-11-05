@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+node_modules
+src
+public
+index.html
+README.md
+package.json
+package-lock.json
+postcss.config.js
+tailwind.config.js
+vite.config.js
+docker-compose.yml
+.gitignore
