@@ -1,74 +1,129 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'AUD', 'SGD', 'HKD', 'JPY', 'KRW', 'MYR', 'THB', 'PHP', 'CNY'];
+const CURRENCIES = [
+  'USD',
+  'EUR',
+  'GBP',
+  'AUD',
+  'SGD',
+  'HKD',
+  'JPY',
+  'KRW',
+  'MYR',
+  'THB',
+  'PHP',
+  'CNY'
+];
 
 export function useExchangeRates() {
   const [rates, setRates] = useState(() => {
-    const saved = localStorage.getItem('rates');
-    return saved ? JSON.parse(saved) : {};
+    try {
+      const saved = localStorage.getItem('rates');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
   });
-  
-  const [kmkRates, setKmkRates] = useState({});
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  const [kmkRates, setKmkRates] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kmkRates');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [isOffline, setIsOffline] = useState(false);
   const [isLoadingKmk, setIsLoadingKmk] = useState(false);
 
   const fetchRates = useCallback(async () => {
-    // Tetap coba fetch meskipun navigator.onLine meleset
-    
-    // 1. Ambil Kurs Live (Fallback)
-    try {
-      const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=IDR,${CURRENCIES.join(',')}`);
-      if(res.ok) {
-         const data = await res.json();
-         const processed = { USD: data.rates.IDR };
-         CURRENCIES.forEach(c => { 
-           if(c !== 'USD') processed[c] = (1 / data.rates[c]) * data.rates.IDR; 
-         });
-         setRates(processed);
-         setIsOffline(false);
-         localStorage.setItem('rates', JSON.stringify(processed));
-      }
-    } catch (e) { console.error("Live Rates Fail:", e); }
-
-    // 2. Ambil Kurs KMK via Google Sheets
     setIsLoadingKmk(true);
+
     try {
-      // ⚠️ PASTIKAN LINK INI BISA DIBUKA DI BROWSER & MUNCUL TEKS CSV ⚠️
-      const googleSheetCsvUrl = "PASTE_LINK_CSV_KAMU_DI_SINI";
-      const timestamp = new Date().getTime();
-      
-      const res = await fetch(`${googleSheetCsvUrl}&t=${timestamp}`);
-      if (!res.ok) throw new Error("Google Sheets Unreachable");
-      
-      const csvText = await res.text();
-      console.log("Isi CSV Mentah:", csvText); // Cek di Inspect Console
+      const googleSheetCsvUrl =
+        'https://docs.google.com/spreadsheets/d/18SWBclZwQLvD57-JjMYDNVQ3tWGUuaQpJcAfEAd2XD8/export?format=csv&gid=0';
+
+      const response = await fetch(
+        `${googleSheetCsvUrl}&t=${Date.now()}`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Google Sheet HTTP ${response.status}`
+        );
+      }
+
+      const csvText = await response.text();
 
       const newKmkRates = {};
-      
-      // REGEX BARU: Lebih fleksibel dengan pemisah koma (,) atau titik koma (;)
-      // Mencari (USD) diikuti karakter apa saja sampai ketemu angka format 17.003,00
-      const regex = /\(([A-Z]{3})\)[^,;]*[;,\s]+["']?([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]+)?)/g;
-      
-      let match;
-      while ((match = regex.exec(csvText)) !== null) {
+
+      const lines = csvText.split('\n');
+
+      for (const line of lines) {
+        const match = line.match(/\(([A-Z]{3})\)/);
+
+        if (!match) continue;
+
         const iso = match[1];
-        let valueStr = match[2];
-        
-        // Konversi 17.003,00 -> 17003.00
-        valueStr = valueStr.replace(/\./g, '').replace(/,/g, '.');
-        let finalValue = parseFloat(valueStr);
-        
-        if (iso === 'JPY') finalValue = finalValue / 100;
-        newKmkRates[iso] = finalValue;
+
+        const cols = line.split(',');
+
+        if (cols.length < 3) continue;
+
+        let value = cols[2]
+          .replace(/"/g, '')
+          .replace(/\./g, '')
+          .replace(',', '.');
+
+        let rate = parseFloat(value);
+
+        if (Number.isNaN(rate)) continue;
+
+        if (iso === 'JPY') {
+          rate = rate / 100;
+        }
+
+        newKmkRates[iso] = rate;
       }
 
-      console.log("Data KMK Berhasil Diproses:", newKmkRates);
-      
       if (Object.keys(newKmkRates).length > 0) {
         setKmkRates(newKmkRates);
+        setRates(newKmkRates);
+
+        localStorage.setItem(
+          'kmkRates',
+          JSON.stringify(newKmkRates)
+        );
+
+        localStorage.setItem(
+          'rates',
+          JSON.stringify(newKmkRates)
+        );
       }
-    } catch (e) {
-      console.error("KMK Sync Error:", e.message);
+
+      setIsOffline(false);
+    } catch (error) {
+      console.error(
+        'KMK Sync Error:',
+        error
+      );
+
+      const cachedRates =
+        localStorage.getItem('rates');
+
+      const cachedKmkRates =
+        localStorage.getItem('kmkRates');
+
+      if (cachedRates) {
+        setRates(JSON.parse(cachedRates));
+      }
+
+      if (cachedKmkRates) {
+        setKmkRates(JSON.parse(cachedKmkRates));
+      }
+
+      setIsOffline(false);
     } finally {
       setIsLoadingKmk(false);
     }
@@ -76,15 +131,14 @@ export function useExchangeRates() {
 
   useEffect(() => {
     fetchRates();
-    const handleOnline = () => { setIsOffline(false); fetchRates(); };
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
   }, [fetchRates]);
 
-  return { rates, kmkRates, isOffline, isLoadingKmk, fetchRates, CURRENCIES };
+  return {
+    rates,
+    kmkRates,
+    isOffline,
+    isLoadingKmk,
+    fetchRates,
+    CURRENCIES
+  };
 }
