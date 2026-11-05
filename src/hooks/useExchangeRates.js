@@ -1,6 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-const CURRENCIES = [
+const SHEET_URL =
+  'https://docs.google.com/spreadsheets/d/18SWBclZwQLvD57-JjMYDNVQ3tWGUuaQpJcAfEAd2XD8/export?format=csv&gid=0';
+
+const RATES_KEY = 'pajak.kmk.rates.v1';
+const SYNCED_AT_KEY = 'pajak.kmk.syncedAt.v1';
+
+export const CURRENCIES = [
   'USD',
   'EUR',
   'GBP',
@@ -12,133 +18,139 @@ const CURRENCIES = [
   'MYR',
   'THB',
   'PHP',
-  'CNY'
+  'CNY',
 ];
 
+const canUseDOM = typeof window !== 'undefined';
+
+function isOnline() {
+  if (!canUseDOM || typeof navigator === 'undefined') return true;
+  return navigator.onLine;
+}
+
+function readStored(key) {
+  if (!canUseDOM) return null;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function readCachedRates() {
+  const current = readStored(RATES_KEY);
+  if (current && typeof current === 'object') return current;
+
+  // Keep rates from the previous version of the app.
+  const legacy = readStored('kmkRates') || readStored('rates');
+  return legacy && typeof legacy === 'object' ? legacy : {};
+}
+
+function readSyncedAt() {
+  const value = readStored(SYNCED_AT_KEY);
+  return typeof value === 'string' ? value : null;
+}
+
+function persist(key, value) {
+  if (!canUseDOM) return;
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    /* Storage is a convenience, not a requirement. */
+  }
+}
+
+function parseSheet(csvText) {
+  const rates = {};
+
+  for (const line of csvText.split(/\r?\n/)) {
+    const iso = line.match(/\(([A-Z]{3})\)/)?.[1];
+    if (!iso) continue;
+
+    const columns = line.split(',');
+    if (columns.length < 3) continue;
+
+    let rate = Number.parseFloat(
+      columns[2].replace(/"/g, '').replace(/\./g, '').replace(',', '.'),
+    );
+
+    if (!Number.isFinite(rate) || rate <= 0) continue;
+    if (iso === 'JPY') rate /= 100;
+
+    rates[iso] = rate;
+  }
+
+  return rates;
+}
+
 export function useExchangeRates() {
-  const [rates, setRates] = useState(() => {
-    try {
-      const saved = localStorage.getItem('rates');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
+  const [rates, setRates] = useState(readCachedRates);
+  const [syncedAt, setSyncedAt] = useState(readSyncedAt);
+  const [status, setStatus] = useState(() => (isOnline() ? 'syncing' : 'offline'));
+
+  const ratesRef = useRef(rates);
+  const inFlight = useRef(false);
+
+  const sync = useCallback(async () => {
+    if (!isOnline()) {
+      setStatus('offline');
+      return;
     }
-  });
 
-  const [kmkRates, setKmkRates] = useState(() => {
-    try {
-      const saved = localStorage.getItem('kmkRates');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const [isOffline, setIsOffline] = useState(false);
-  const [isLoadingKmk, setIsLoadingKmk] = useState(false);
-
-  const fetchRates = useCallback(async () => {
-    setIsLoadingKmk(true);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setStatus('syncing');
 
     try {
-      const googleSheetCsvUrl =
-        'https://docs.google.com/spreadsheets/d/18SWBclZwQLvD57-JjMYDNVQ3tWGUuaQpJcAfEAd2XD8/export?format=csv&gid=0';
+      const response = await fetch(`${SHEET_URL}&t=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const response = await fetch(
-        `${googleSheetCsvUrl}&t=${Date.now()}`
-      );
+      const nextRates = parseSheet(await response.text());
+      if (Object.keys(nextRates).length === 0) throw new Error('Data kurs kosong');
 
-      if (!response.ok) {
-        throw new Error(
-          `Google Sheet HTTP ${response.status}`
-        );
-      }
+      const stamp = new Date().toISOString();
 
-      const csvText = await response.text();
-
-      const newKmkRates = {};
-
-      const lines = csvText.split('\n');
-
-      for (const line of lines) {
-        const match = line.match(/\(([A-Z]{3})\)/);
-
-        if (!match) continue;
-
-        const iso = match[1];
-
-        const cols = line.split(',');
-
-        if (cols.length < 3) continue;
-
-        let value = cols[2]
-          .replace(/"/g, '')
-          .replace(/\./g, '')
-          .replace(',', '.');
-
-        let rate = parseFloat(value);
-
-        if (Number.isNaN(rate)) continue;
-
-        if (iso === 'JPY') {
-          rate = rate / 100;
-        }
-
-        newKmkRates[iso] = rate;
-      }
-
-      if (Object.keys(newKmkRates).length > 0) {
-        setKmkRates(newKmkRates);
-        setRates(newKmkRates);
-
-        localStorage.setItem(
-          'kmkRates',
-          JSON.stringify(newKmkRates)
-        );
-
-        localStorage.setItem(
-          'rates',
-          JSON.stringify(newKmkRates)
-        );
-      }
-
-      setIsOffline(false);
+      ratesRef.current = nextRates;
+      setRates(nextRates);
+      setSyncedAt(stamp);
+      persist(RATES_KEY, nextRates);
+      persist(SYNCED_AT_KEY, stamp);
+      setStatus('ready');
     } catch (error) {
-      console.error(
-        'KMK Sync Error:',
-        error
-      );
-
-      const cachedRates =
-        localStorage.getItem('rates');
-
-      const cachedKmkRates =
-        localStorage.getItem('kmkRates');
-
-      if (cachedRates) {
-        setRates(JSON.parse(cachedRates));
-      }
-
-      if (cachedKmkRates) {
-        setKmkRates(JSON.parse(cachedKmkRates));
-      }
-
-      setIsOffline(false);
+      console.error('Sinkronisasi kurs KMK gagal:', error);
+      setStatus(Object.keys(ratesRef.current).length > 0 ? 'stale' : 'error');
     } finally {
-      setIsLoadingKmk(false);
+      inFlight.current = false;
     }
   }, []);
 
   useEffect(() => {
-    fetchRates();
-  }, [fetchRates]);
+    sync();
+  }, [sync]);
+
+  useEffect(() => {
+    if (!canUseDOM) return undefined;
+
+    const handleOnline = () => sync();
+    const handleOffline = () => setStatus('offline');
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [sync]);
 
   return {
     rates,
-    kmkRates,
-    isOffline,
-    isLoadingKmk,
-    fetchRates,
-    CURRENCIES
+    syncedAt,
+    status,
+    sync,
+    CURRENCIES,
   };
 }

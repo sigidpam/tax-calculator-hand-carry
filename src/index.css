@@ -2,25 +2,208 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Instrument palette.
+ * Warm paper, near-black ink, one signal yellow. No shadows, no gradients.
+ * Values are space-separated RGB channels so Tailwind can apply opacity.
+ */
+:root {
+  --paper: 239 237 230;
+  --surface: 250 249 245;
+  --ink: 20 20 16;
+  --muted: 94 93 85;
+  --line: 217 214 204;
+  --accent: 233 176 0;
+  --accent-ink: 20 20 16;
+  --danger: 179 38 30;
+  --invert: 20 20 16;
+  --invert-ink: 250 249 245;
+  --focus: 20 20 16;
+  color-scheme: light;
+}
+
+.dark {
+  --paper: 12 12 10;
+  --surface: 21 21 18;
+  --ink: 237 235 226;
+  --muted: 156 154 143;
+  --line: 46 45 39;
+  --accent: 242 194 0;
+  --accent-ink: 12 12 10;
+  --danger: 232 106 92;
+  --invert: 237 235 226;
+  --invert-ink: 12 12 10;
+  --focus: 242 194 0;
+  color-scheme: dark;
+}
+
 @layer base {
-  :root {
-    --bg-primary: #f4f4f5;
-    --surface: #ffffff;
-    --text-main: #09090b;
-    --border-color: #d4d4d8;
-    --accent: #ff3b30;
+  * {
+    border-color: rgb(var(--line));
+  }
+
+  html {
+    background-color: rgb(var(--paper));
   }
 
   body {
-    background-color: var(--bg-primary);
-    color: var(--text-main);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    min-height: 100svh;
+    overflow-x: hidden;
+    background-color: rgb(var(--paper));
+    color: rgb(var(--ink));
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: rgb(var(--accent));
+    color: rgb(var(--accent-ink));
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  button,
+  textarea {
+    font: inherit;
+  }
+
+  button,
+  select {
+    touch-action: manipulation;
+  }
+
+  input::placeholder {
+    color: rgb(var(--muted) / 0.55);
+  }
+
+  select option {
+    background-color: rgb(var(--surface));
+    color: rgb(var(--ink));
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  a {
+    text-underline-offset: 3px;
   }
 }
 
-input:focus, select:focus, button:focus {
-  outline: 2px solid #000000;
-  outline-offset: -1px;
+@layer utilities {
+  .tnum {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
 }
 
+.print-only {
+  display: none;
+}
+
+/* In dark mode the total block flips to cream, so the accent mark flips to ink. */
+.dark .total-band .accent-mark {
+  background-color: rgb(var(--invert-ink));
+}
+
+@keyframes sync-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.sync-pulse {
+  animation: sync-pulse 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm;
+  }
+
+  :root,
+  .dark {
+    --paper: 255 255 255;
+    --surface: 255 255 255;
+    --ink: 0 0 0;
+    --muted: 70 70 70;
+    --line: 180 180 180;
+    --accent: 0 0 0;
+    --accent-ink: 0 0 0;
+    --danger: 0 0 0;
+    --invert: 255 255 255;
+    --invert-ink: 0 0 0;
+    --focus: 0 0 0;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .total-band {
+    background: #fff !important;
+    color: #000 !important;
+    border-top: 2px solid #000 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .total-band .accent-mark {
+    background: #000 !important;
+  }
+
+  .instrument {
+    border: 1px solid #000 !important;
+  }
+
+  a {
+    text-decoration: none;
+  }
+}

@@ -15,7 +15,7 @@ Web App PWA (Progressive Web App) untuk menghitung estimasi pajak impor barang b
 ## 🛠️ Tech Stack
 
 * **Frontend:** React + Vite
-* **Styling:** Tailwind CSS + Lucide Icons
+* **Styling:** Tailwind CSS + custom inline SVG icons
 * **Deployment:** Docker / Podman + Nginx
 * **Data Scraper:** Google Sheets API (Bypass Cloudflare Kemenkeu)
 

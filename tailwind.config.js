@@ -1,24 +1,44 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: 'class', // <--- TAMBAHKAN BARIS INI
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}", 
-  ],
+  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
-      fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-      },
       colors: {
-        // Custom color palette ala 'Lovable'
-        primary: '#0f172a', // Slate 900
-        secondary: '#64748b', // Slate 500
-        accent: '#3b82f6', // Blue 500
-        success: '#10b981', // Emerald 500
-      }
+        paper: 'rgb(var(--paper) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        ink: 'rgb(var(--ink) / <alpha-value>)',
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        line: 'rgb(var(--line) / <alpha-value>)',
+        accent: 'rgb(var(--accent) / <alpha-value>)',
+        'accent-ink': 'rgb(var(--accent-ink) / <alpha-value>)',
+        danger: 'rgb(var(--danger) / <alpha-value>)',
+        invert: 'rgb(var(--invert) / <alpha-value>)',
+        'invert-ink': 'rgb(var(--invert-ink) / <alpha-value>)',
+      },
+      fontFamily: {
+        sans: ['Inter', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'Liberation Mono', 'monospace'],
+      },
+      fontSize: {
+        label: ['0.6875rem', { lineHeight: '1.2' }],
+        micro: ['0.625rem', { lineHeight: '1.4' }],
+      },
+      letterSpacing: {
+        label: '0.12em',
+        display: '-0.04em',
+      },
+      maxWidth: {
+        shell: '1180px',
+      },
+      borderRadius: {
+        xs: '2px',
+        sm: '3px',
+      },
+      transitionDuration: {
+        DEFAULT: '120ms',
+      },
     },
   },
   plugins: [],
-}
-
+};
